@@ -1,6 +1,6 @@
 # Slack input plugin for Embulk
 
-TODO: Write short description here and embulk-input-slack.gemspec file.
+embulk-input-slack is the Embulk input plugin for [Slack](https://slack.com) history.
 
 ## Overview
 
@@ -11,17 +11,20 @@ TODO: Write short description here and embulk-input-slack.gemspec file.
 
 ## Configuration
 
-- **option1**: description (integer, required)
-- **option2**: description (string, default: `"myvalue"`)
-- **option3**: description (string, default: `null`)
+- **token**: your token for target team (string, required)
+- **channel**: target channel (string, default: all channel)
+- **from**: from datetime for range (date, default: first history)
+- **to**: to datetime for range (date, default: today)
 
 ## Example
 
 ```yaml
 in:
   type: slack
-  option1: example1
-  option2: example2
+  token: YOUR-TOKEN-IS-HERE
+  channel: #general
+  from: 2015/02/02
+  to: 2015/04/30
 ```
 
 
