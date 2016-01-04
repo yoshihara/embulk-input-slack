@@ -5,15 +5,15 @@ Gem::Specification.new do |spec|
   spec.authors       = ["yoshihara"]
   spec.summary       = "Slack input plugin for Embulk"
   spec.description   = "Loads records from Slack."
-  spec.email         = ["h.yoshihara@everyleaf.com"]
+  spec.email         = ["yshr04hrk@gmail.com"]
   spec.licenses      = ["MIT"]
-  # TODO set this: spec.homepage      = "https://github.com/h.yoshihara/embulk-input-slack"
+  spec.homepage      = "https://github.com/yoshihara/embulk-input-slack"
 
   spec.files         = `git ls-files`.split("\n") + Dir["classpath/*.jar"]
   spec.test_files    = spec.files.grep(%r{^(test|spec)/})
   spec.require_paths = ["lib"]
 
-  #spec.add_dependency 'YOUR_GEM_DEPENDENCY', ['~> YOUR_GEM_DEPENDENCY_VERSION']
+  spec.add_dependency 'httpclient'
   spec.add_development_dependency 'embulk', ['~> 0.7.5']
   spec.add_development_dependency 'bundler', ['~> 1.0']
   spec.add_development_dependency 'rake', ['>= 10.0']
