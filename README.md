@@ -22,7 +22,7 @@ embulk-input-slack is the Embulk input plugin for [Slack](https://slack.com) his
 in:
   type: slack
   token: YOUR-TOKEN-IS-HERE
-  channel: #general
+  channel: "#general"
   from: 2015/02/02
   to: 2015/04/30
 ```
