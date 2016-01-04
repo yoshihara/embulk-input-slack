@@ -36,6 +36,7 @@ module Embulk
 
       def self.guess(config)
         token = config.param("token", :string)
+        channel_name = config.param("channel", :string, default: nil)
         from = config.param("from", :string, default: nil)
         to = config.param("to", :string, default: nil)
 
@@ -47,8 +48,18 @@ module Embulk
         channels = client.channels
         records = []
 
-        channels.each do |channel|
-          records += client.history(channel[:id], channel[:name], from, to)
+        if channel_name
+          channel_name = channel_name.gsub(/^#/, "")
+          target_channel = channels.detect {|channel| channel[:name] == channel_name }
+          unless target_channel
+            raise ConfigError.new("no exist channel: ##{channel_name}")
+          end
+
+          records = client.history(target_channel[:id], target_channel[:name], from, to)
+        else
+          channels.each do |channel|
+            records += client.history(channel[:id], channel[:name], from, to)
+          end
         end
 
         columns = Guess::SchemaGuess.from_hash_records(records)
