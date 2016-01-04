@@ -5,8 +5,8 @@ embulk-input-slack is the Embulk input plugin for [Slack](https://slack.com) his
 ## Overview
 
 * **Plugin type**: input
-* **Resume supported**: yes
-* **Cleanup supported**: yes
+* **Resume supported**: no
+* **Cleanup supported**: no
 * **Guess supported**: no
 
 ## Configuration
