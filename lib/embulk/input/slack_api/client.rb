@@ -14,15 +14,27 @@ module Embulk
           @client = HTTPClient.new
         end
 
-        def history(channel_id, channel_name, from, to, count: 1000, fetch_all: false)
-          # TODO: fetch_allがtrueでhas_moreがtrueだったときの処理を追加する（ブロック渡しにする）
+        def history(channel_name, from, to, count: 1000, fetch_all: false)
+          channel_id = channel_id(channel_name)
+
           params = @default_params.merge(channel: channel_id, count: count, oldest: from, latest: to)
-          response = JSON.parse(@client.get(HISTORY_API, params).body)
+          Enumerator.new do |histories|
+            loop do
+              response = JSON.parse(@client.get(HISTORY_API, params).body)
 
-          raise ConfigError.new(response["error"]) unless response["ok"]
+              raise ConfigError.new(response["error"]) unless response["ok"]
 
-          response["messages"].map do |message|
-            {channel: channel_name}.merge(convert(message))
+              response["messages"].each do |message|
+                histories << {channel: channel_name}.merge(convert(message))
+              end
+
+              if fetch_all && response["has_more"]
+                last_ts = histories.last["ts"]
+                params = params.merge(latest: last_ts)
+              else
+                break
+              end
+            end
           end
         end
 
@@ -35,6 +47,16 @@ module Embulk
           channels = response["channels"].collect {|channel| {id: channel["id"], name: channel["name"]}}
 
           @channels = channels
+        end
+
+        def channel_id(channel_name)
+          channel_name = channel_name.gsub(/^#/, "")
+          target_channel = channels.detect {|channel| channel[:name] == channel_name }
+          unless target_channel
+            raise ConfigError.new("no exist channel: ##{channel_name}")
+          end
+
+          target_channel[:id]
         end
 
         private
@@ -61,7 +83,7 @@ module Embulk
               when "user"
                 users[message["user"]]
               else
-                value
+                value.to_json
               end
           end
 

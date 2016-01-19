@@ -4,25 +4,33 @@ module Embulk
   module Input
 
     class Slack < InputPlugin
-      CHANNEL_API = "https://slack.com/api/channels.list".freeze
-      USERS_API = "https://slack.com/api/users.list".freeze
-      HISTORY_API = "https://slack.com/api/channels.history".freeze
-
       Plugin.register_input("slack", self)
 
       def self.transaction(config, &control)
         # configuration code:
+        token = config.param("token", :string)
+        channel_name = config.param("channel", :string, default: nil)
+        client = SlackApi::Client.new(token)
+
+        columns = config.param(:columns, :array)
+
+        from = config.param("from", :string, default: nil)
+        to = config.param("to", :string, default: nil)
+
         task = {
-          "option1" => config.param("option1", :integer),                     # integer, required
-          "option2" => config.param("option2", :string, default: "myvalue"),  # string, optional
-          "option3" => config.param("option3", :string, default: nil),        # string, optional
+          token: token,
+          channel_name: channel_name,
+          from: from,
+          to: to,
+          schema: columns,
         }
 
-        columns = [
-          Column.new(0, "example", :string),
-          Column.new(1, "column", :long),
-          Column.new(2, "value", :double),
-        ]
+        columns = task[:schema].map do |column|
+          name = column["name"]
+          type = column["type"].to_sym
+
+          Column.new(nil, name, type, column["format"])
+        end
 
         resume(task, columns, 1, &control)
       end
@@ -40,25 +48,17 @@ module Embulk
         from = config.param("from", :string, default: nil)
         to = config.param("to", :string, default: nil)
 
-        from = from ? Time.parse(from).to_i : 0
-        to = to ? Time.parse(to).to_i : Time.now.to_i
+        from, to = adjust_range(from, to)
 
         client = SlackApi::Client.new(token)
 
-        channels = client.channels
         records = []
 
         if channel_name
-          channel_name = channel_name.gsub(/^#/, "")
-          target_channel = channels.detect {|channel| channel[:name] == channel_name }
-          unless target_channel
-            raise ConfigError.new("no exist channel: ##{channel_name}")
-          end
-
-          records = client.history(target_channel[:id], target_channel[:name], from, to)
+          records = client.history(channel_name, from, to)
         else
           channels.each do |channel|
-            records += client.history(channel[:id], channel[:name], from, to)
+            records += client.history(channel[:name], from, to)
           end
         end
 
@@ -66,20 +66,60 @@ module Embulk
         return {"columns" => columns}
       end
 
+      def self.adjust_range(from, to)
+        adjusted_from = from ? Time.parse(from).to_i : 0
+        adjusted_to = to ? Time.parse(to).to_i : Time.now.to_i
+
+        [adjusted_from, adjusted_to]
+      end
+
       def init
-        # initialization code:
-        @option1 = task["option1"]
-        @option2 = task["option2"]
-        @option3 = task["option3"]
+        @client = SlackApi::Client.new(task[:token])
+        @channel_name = task[:channel_name]
+
+        from = task[:from]
+        @from = from ? Time.parse(from).to_i : 0
+
+        to = task[:to]
+        @to = to ? Time.parse(to).to_i : Time.now.to_i
+        @schema = task[:schema]
       end
 
       def run
-        page_builder.add(["example-value", 1, 0.1])
-        page_builder.add(["example-value", 2, 0.2])
+        if @channel_name
+          @client.history(@channel_name, @from, @to, fetch_all: true).each do |channel|
+            page_builder.add(extract_values(@channel_name, channel))
+          end
+
+        else
+          @client.channels.each do |channel|
+            @client.history(channel[:name], @from, @to, fetch_all: true).each do |channel|
+              # schemaの順番に並べる
+              page_builder.add(extract_values(channel[:name], channel))
+            end
+          end
+        end
+
         page_builder.finish
 
         task_report = {}
         return task_report
+      end
+
+      private
+
+      def extract_values(channel_name, record)
+        @schema.map do |column|
+          if column["name"] == "channel"
+            channel_name
+          else
+            record[column["name"]]
+          end
+        end
+      end
+
+      def adjusted_range(*args)
+        self.class.adjust_range(*args)
       end
     end
 
