@@ -118,7 +118,7 @@ module Embulk
         end
       end
 
-      def adjusted_range(*args)
+      def adjust_range(*args)
         self.class.adjust_range(*args)
       end
     end
