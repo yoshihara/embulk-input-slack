@@ -77,11 +77,8 @@ module Embulk
         @client = SlackApi::Client.new(task[:token])
         @channel_name = task[:channel_name]
 
-        from = task[:from]
-        @from = from ? Time.parse(from).to_i : 0
+        @from, @to = adjust_range(task[:from], task[:to])
 
-        to = task[:to]
-        @to = to ? Time.parse(to).to_i : Time.now.to_i
         @schema = task[:schema]
       end
 
